@@ -87,6 +87,19 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/users/buyer', async(req,res)=>{
+            const role=req.query.role
+            const query={role:role}
+            const buyers=await usersCollection.find(query).toArray();
+            res.send(buyers);
+        })
+        app.get('/users/seller', async(req,res)=>{
+            const role=req.query.role
+            const query={role:role}
+            const sellers=await usersCollection.find(query).toArray();
+            res.send(sellers);
+        })
+
 
         app.put('/googleusers', async(req, res)=>{ // by my logic
             const email = req.query.email;
@@ -104,11 +117,11 @@ async function run() {
                 }
             };
             const result = await usersCollection.updateOne(filter, updateDoc, options)
-            console.log(result);
+            // console.log(result);
             res.send(result)            
         })
 
-        
+
         app.post("/bookingProducts", async(req,res)=>{
             const bookingProduct = req.body
             // console.log(bookingProduct);
@@ -117,7 +130,7 @@ async function run() {
                 product_name:bookingProduct.product_name
             }
             const booked = await bookingProductCollection.find(query).toArray();
-            console.log(booked);
+            // console.log(booked);
             if(booked.length){
                 const message = `you already have booked ${bookingProduct.product_name}`
                 return res.send({
