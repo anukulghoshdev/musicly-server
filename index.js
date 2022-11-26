@@ -28,6 +28,37 @@ app.get('/', async (req, res) => {
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.tr6mdf5.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+
+
+
+
+
+
+function verifyJWT(req, res, next) {
+    // console.log('token for my orders data',req.headers.authorization); // mybookingorders
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send('unauthorized access');
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'forbidden access' })
+        }
+        // console.log('from jwtverify', decoded ); // { email: 'henilin695@jernang.com', iat: 1669009438, exp: 1669013038 }
+        req.decoded = decoded;
+        next();
+    })
+
+}
+
+
+
+
+
 async function run() {
     try {
         const categoriesCollection = client.db("musicly").collection("categories");
@@ -56,6 +87,51 @@ async function run() {
             res.send(result)
         })
 
+
+        app.put('/googleusers', async(req, res)=>{ // by my logic
+            const email = req.query.email;
+            // console.log(email);
+            const user = req.body;
+            // console.log(user);
+
+            const filter = {email:user.email};
+            const options = { upsert:true };
+            const updateDoc={
+                $set:{
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
+                }
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
+            console.log(result);
+            res.send(result)            
+        })
+
+        
+        app.post("/bookingProducts", async(req,res)=>{
+            const bookingProduct = req.body
+            // console.log(bookingProduct);
+            const query = {
+                email:bookingProduct.email,
+                product_name:bookingProduct.product_name
+            }
+            const booked = await bookingProductCollection.find(query).toArray();
+            console.log(booked);
+            if(booked.length){
+                const message = `you already have booked ${bookingProduct.product_name}`
+                return res.send({
+                    acknowledged: false,
+                    message
+                })
+            }
+            const result = await bookingProductCollection.insertOne(bookingProduct)
+            res.send(result)
+        })
+
+
+
+
         app.get('/jwt', async (req, res) => { // jwt
             const email = req.query.email;
             const query = { email: email };
@@ -69,20 +145,17 @@ async function run() {
             res.status(403).send({ accessToken: '' });
         })
 
-        app.post("/bookingProducts", async(req,res)=>{
-            const bookingProduct = req.body
-            // console.log(bookingProduct);
-            const query = {email:bookingProduct.email}
-            const booked = await bookingProductCollection.find(query).toArray();
-            if(booked.length){
-                const message = `you already have booked ${bookingProduct.product_name}`
-                return res.send({
-                    acknowledged: false,
-                    message
-                })
+        app.get('/mybookingorders',verifyJWT, async(req, res)=>{ // token dibo orders gula dekhanor jonno
+            const email = req.query.email;
+
+            const decodedEmail = req.decoded.email;
+            if(email !== decodedEmail){
+                return res.status(403).send({ message: 'Forbidden Access' })
             }
-            const result = await bookingProductCollection.insertOne(bookingProduct)
-            res.send(result)
+            
+            const query = {email: email}
+            const bookingOrders = await bookingProductCollection.find(query).toArray();
+            res.send(bookingOrders);
         })
     }
     finally {
