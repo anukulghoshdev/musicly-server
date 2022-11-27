@@ -170,6 +170,14 @@ async function run() {
             const bookingOrders = await bookingProductCollection.find(query).toArray();
             res.send(bookingOrders);
         })
+
+        // check user as admin
+        app.get('/users/admin/:email', async(req, res)=>{
+            const email = req.params.email;
+            const query = {email: email};
+            const user = await usersCollection.findOne(query);
+            res.send({adminIs: user?.role === 'Admin'});
+        })
     }
     finally {
 
