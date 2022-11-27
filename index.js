@@ -172,11 +172,11 @@ async function run() {
         })
 
         // check user as admin
-        app.get('/users/admin/:email', async(req, res)=>{
+        app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email;
-            const query = {email: email};
+            const query = { email }
             const user = await usersCollection.findOne(query);
-            res.send({adminIs: user?.role === 'Admin'});
+            res.send({ isAdmin: user?.role === 'Admin' });
         })
     }
     finally {
