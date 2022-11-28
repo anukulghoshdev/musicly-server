@@ -203,7 +203,12 @@ async function run() {
         //     res.send({ isSeller: user?.role === 'Buyer' });
         // })
 
-        
+        app.get('/productCategories', async(req,res)=>{
+            const query = {};
+            const categories = await categoriesCollection.find(query).project({Category_name:1}).toArray();
+            // console.log(categories);
+            res.send(categories)
+        })
     }
     finally {
 
