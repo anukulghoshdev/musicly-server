@@ -73,10 +73,18 @@ async function run() {
             res.send(categories);
         })
 
-        // get products categorywise
-        app.get('/category/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { category_id: id }
+        // // get products categorywise
+        // app.get('/category/:id', async (req, res) => {
+        //     const id = req.params.id;
+        //     const query = { category_id: id }
+        //     const products = await productCollection.find(query).toArray();
+        //     res.send(products);
+        // })
+
+        // // get products nname
+        app.get('/category/:name', async (req, res) => { // /category/${id}
+            const name = req.params.name;
+            const query = { Category_name: name }
             const products = await productCollection.find(query).toArray();
             res.send(products);
         })
@@ -178,6 +186,24 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ isAdmin: user?.role === 'Admin' });
         })
+
+        app.get('/users/seller/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email }
+            const user = await usersCollection.findOne(query);
+            res.send({ isSeller: user?.role === 'Seller' });
+        })
+
+
+        // // check user as normal user/buyer
+        // app.get('/users/buyer/:email', async (req, res) => {
+        //     const email = req.params.email;
+        //     const query = { email }
+        //     const user = await usersCollection.findOne(query);
+        //     res.send({ isSeller: user?.role === 'Buyer' });
+        // })
+
+        
     }
     finally {
 
