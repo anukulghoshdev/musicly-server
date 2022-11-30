@@ -99,19 +99,66 @@ async function run() {
             res.send(products);
         })
 
+        // get all products
+        app.get('/products', async(req,res)=>{
+            const query = {}
+            const products = await productCollection.find(query).toArray();
+            res.send(products) 
+        })
+
+        // make advertise
+        app.put('/product/advertise/:id', async(req, res)=>{
+            const id = req.params.id;
+            
+            const filter = {_id:ObjectId(id)};
+            const options = {upsert: true};
+            const updatedDoc={
+                $set:{
+                    advertise: true
+                }
+            }
+            const result = await productCollection.updateOne(filter, updatedDoc, options)
+            res.send(result);
+        })
+
+
+        
+        app.put('/user/seller/verify/:id', async(req, res)=>{
+            const id = req.params.id;
+            const filter = {_id:ObjectId(id)};
+            const options = {upsert: true};
+            const updatedDoc={
+                $set:{
+                    verified: true
+                }
+
+            }
+            const result = await usersCollection.updateOne(filter,updatedDoc,options)
+            res.send(result);
+        })
+
+        // // get all verify seller --------------------------
+        // app.get('/users/seller', async(req,res)=>{
+        //     const isVerified = req.query.verified
+        //     const query = {verified:isVerified}
+        //     const verifiedUser = await usersCollection.findOne(query)
+        //     console.log(verifiedUser);
+        //     res.send(verifiedUser);
+        // })
+
         app.post('/users', async (req, res) => {
             const user = req.body;
             const result = await usersCollection.insertOne(user);
             res.send(result)
         })
 
-        app.get('/users/buyer',verifyJWT, async (req, res) => {
+        app.get('/users/buyer', async (req, res) => {
             const role = req.query.role
             const query = { role: role }
             const buyers = await usersCollection.find(query).toArray();
             res.send(buyers);
         })
-        app.get('/users/seller',verifyJWT, async (req, res) => {
+        app.get('/users/seller', async (req, res) => {
             const role = req.query.role
             const query = { role: role }
             const sellers = await usersCollection.find(query).toArray();
@@ -119,7 +166,7 @@ async function run() {
         })
 
         // delete a single user
-        app.delete('/user/:id',verifyJWT, async(req,res)=>{
+        app.delete('/user/:id', async(req,res)=>{
             const id = req.params.id;
             const query = {_id:ObjectId(id)};
             const result = await usersCollection.deleteOne(query);
@@ -174,7 +221,7 @@ async function run() {
             const query = { email: email };
             const user = await usersCollection.findOne(query);
             if (user) {
-                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '1d' })
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '20d' })
                 // console.log('in /jwt',email);
                 return res.send({ accessToken: token });
             }
