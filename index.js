@@ -11,12 +11,12 @@ app.use(express.json());
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { query } = require('express');
 
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
 
 
 app.get('/', async (req, res) => {
@@ -42,6 +42,7 @@ function verifyJWT(req, res, next) {
     // console.log('token for my orders data',req.headers.authorization); // mybookingorders
 
     const authHeader = req.headers.authorization;
+    // console.log('inside verifyJWT function', authHeader);
     if (!authHeader) {
         return res.status(401).send('unauthorized access');
     }
@@ -70,6 +71,19 @@ async function run() {
         const bookingProductCollection = client.db("musicly").collection("bookingProduct"); // orders
         const paymentsCollection = client.db("musicly").collection("payments");
 
+        const verifySeller = async (req, res, next) => {
+            console.log("Inside verifyAdmin function ", req.decoded.email);
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
+
+            if (user?.role !== 'Seller') {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            next();
+        }
+
+
         // get all categories
         app.get('/categories', async (req, res) => {
             const query = {};
@@ -85,11 +99,7 @@ async function run() {
         //     res.send(products);
         // })
 
-        app.post('/addproducts', verifyJWT, async (req, res) => { // get authorization verifyjwt 
-            const product = req.body;
-            const result = await productCollection.insertOne(product);
-            res.send(result)
-        })
+
 
         // // get products by category name wise
         app.get('/category/:name', async (req, res) => { // 
@@ -100,20 +110,20 @@ async function run() {
         })
 
         // get all products
-        app.get('/products', async(req,res)=>{
+        app.get('/products', async (req, res) => {
             const query = {}
             const products = await productCollection.find(query).toArray();
-            res.send(products) 
+            res.send(products)
         })
 
         // make advertise
-        app.put('/product/advertise/:id', async(req, res)=>{
+        app.put('/product/advertise/:id', async (req, res) => {
             const id = req.params.id;
-            
-            const filter = {_id:ObjectId(id)};
-            const options = {upsert: true};
-            const updatedDoc={
-                $set:{
+
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
                     advertise: true
                 }
             }
@@ -121,19 +131,30 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/products/advertise', async (req, res) => {
+            // const advertise = req.query.advertise
+            // console.log(advertise)
+            const query = {
+                advertise: true,
+            }
 
-        
-        app.put('/user/seller/verify/:id', async(req, res)=>{
+            const products = await productCollection.find(query).toArray();
+            console.log(products);
+            res.send(products)
+        })
+
+
+
+        app.put('/user/seller/verify/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id:ObjectId(id)};
-            const options = {upsert: true};
-            const updatedDoc={
-                $set:{
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
                     verified: true
                 }
-
             }
-            const result = await usersCollection.updateOne(filter,updatedDoc,options)
+            const result = await usersCollection.updateOne(filter, updatedDoc, options)
             res.send(result);
         })
 
@@ -154,10 +175,12 @@ async function run() {
 
         app.get('/users/buyer', async (req, res) => {
             const role = req.query.role
+            console.log(role);
             const query = { role: role }
             const buyers = await usersCollection.find(query).toArray();
             res.send(buyers);
         })
+
         app.get('/users/seller', async (req, res) => {
             const role = req.query.role
             const query = { role: role }
@@ -166,9 +189,9 @@ async function run() {
         })
 
         // delete a single user
-        app.delete('/user/:id', async(req,res)=>{
+        app.delete('/user/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id:ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await usersCollection.deleteOne(query);
             res.send(result);
         })
@@ -222,25 +245,25 @@ async function run() {
             const user = await usersCollection.findOne(query);
             if (user) {
                 const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '20d' })
-                // console.log('in /jwt',email);
                 return res.send({ accessToken: token });
             }
-            // console.log('in jwt 138',user);
             res.status(403).send({ accessToken: '' });
         })
+
 
         // get all my order for buyers
         app.get('/mybookingorders', verifyJWT, async (req, res) => { // token dibo orders gula dekhanor jonno
             const email = req.query.email;
-
+            console.log(email)
             const decodedEmail = req.decoded.email;
+
             if (email !== decodedEmail) {
                 return res.status(403).send({ message: 'Forbidden Access' })
             }
-
             const query = { email: email }
             const bookingOrders = await bookingProductCollection.find(query).toArray();
             res.send(bookingOrders);
+
         })
 
         app.get('/orders/:id', async (req, res) => {
@@ -250,7 +273,14 @@ async function run() {
             res.send(order);
         })
 
-        app.get('/myproducts',verifyJWT, async (req, res) => {  // get authorization verifyjwt dio  (pore korbo)
+        // seller
+        app.post('/addproducts', verifyJWT, verifySeller, async (req, res) => { // get authorization verifyjwt, verify seller
+            const product = req.body;
+            const result = await productCollection.insertOne(product);
+            res.send(result)
+        })
+
+        app.get('/myproducts', verifyJWT, verifySeller, async (req, res) => {  // get authorization verifyjwt, verify seller 
             const email = req.query.email;
 
 
@@ -262,14 +292,14 @@ async function run() {
         })
 
         // delete a single product
-        app.delete('/product/:id', async(req,res)=>{
+        app.delete('/product/:id',verifyJWT, verifySeller, async (req, res) => {
             const id = req.params.id;
-            const query = {_id:ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await productCollection.deleteOne(query)
             res.send(result);
         })
 
-        
+
 
         // check user as admin
         app.get('/users/admin/:email', async (req, res) => {
